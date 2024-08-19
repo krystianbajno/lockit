@@ -17,3 +17,5 @@
 - master key allows to change state
 - state is saved in a json file
 - encryption data is encrypted authentication is encryption with master key
+
+4. decryption gui
