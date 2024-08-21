@@ -1,0 +1,15 @@
+[package]
+name = "lockit"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+aes-gcm = "0.10"
+hkdf = "0.12.4"
+sha2 = "0.10"
+rand = "0.8"
+zstd = "0.13.2"
+tar = "0.4"
+rpassword = "7.3.1"
+hex = "0.4.3"
