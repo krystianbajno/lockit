@@ -1,23 +1,31 @@
 # Lockit
 Lock it, unlock it.
 
-Blazing fast file encryption suite.
+⚡ Blazing fast file encryption suite.
 
 ```bash
-./lockit <file> <file2> <file3> # process files default mode (encrypt, decrypt)
-./lockit encrypt <file> <file2> <file3> # encrypt files
-./lockit encrypt <file> -p # use custom password
-./lockit encrypt <dir> # encrypt files in directories
-./lockit decrypt <dir/file> # decrypt files / directories
-./lockit encrypt <dir> --dir # encrypt directories, but first tar contents and then compress and encrypt the tar file
-./lockit --encrypt-filenames # encrypt filenames
-./lockit --no-encrypt-filenames # do not encrypt filenames
-./lockit --self-destruct # remove lockit after use
-./lockit --no-self-destruct # do not remove lockit after use
+./lockit <file> <file2> <file3>          # Process files in default mode (encrypt/decrypt)
+./lockit encrypt <file> <file2> <file3>  # Encrypt specific files
+./lockit encrypt <file> -p               # Encrypt a file with a custom password
+./lockit encrypt <dir>                   # Encrypt all files in a directory
+./lockit decrypt <dir/file>              # Decrypt a file or directory
+./lockit encrypt <dir> --dir             # Compress, tar, and encrypt entire directories
+./lockit --encrypt-filenames             # Encrypt file names
+./lockit --no-encrypt-filenames          # Keep file names unchanged
+./lockit --self-destruct                 # Remove Lockit after use
+./lockit --no-self-destruct              # Retain Lockit after use
+
 ```
 
 ## Mechanism
-Files are zstd compressed and aes256gcm encrypted.
+Lockit compresses files using zstd and secures them with AES-256-GCM encryption.
 
-## Change default settings
-Modify `build.rs`
+## Customizing Default Settings
+To change default settings, simply modify `build.rs`.
+
+
+
+
+
+
+
