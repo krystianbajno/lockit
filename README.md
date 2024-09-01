@@ -4,8 +4,8 @@ Lock it, unlock it.
 ⚡ Blazing fast file encryption suite.
 
 ```bash
-./lockit <file> <file2> <file3>            # Process files in default mode (encrypt/decrypt)
-./lockit encrypt <file> <file2> <file3>    # Encrypt specific files
+./lockit <file> <file2> <dir1>            # Process files in default mode (encrypt/decrypt)
+./lockit encrypt <file> <file2> <dir1>    # Encrypt specific files
 ./lockit encrypt <file> -p                 # Encrypt a file with a custom password
 ./lockit encrypt <dir>                     # Encrypt all files in a directory
 ./lockit decrypt <dir/file>                # Decrypt a file or directory
