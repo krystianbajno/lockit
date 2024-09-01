@@ -21,6 +21,12 @@ Lock it, unlock it.
 ## Mechanism
 Lockit compresses files using zstd and secures them with AES-256-GCM encryption. It also provides secure file deletion that follows DoD 5220.22-M standard.
 
+## Installation
+```bash
+git clone https://github.com/krystianbajno/lockit
+cargo build --release
+```
+
 ## Customizing Default Settings
 To change default settings, simply modify `build.rs`.
 
