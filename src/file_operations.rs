@@ -11,16 +11,17 @@ pub fn process_file_with_flags(
     password: &str, 
     encrypt: bool, 
     encrypt_filenames: bool,
+    skip_dod: bool,
 ) -> Option<PathBuf> {
     let dir_lockit_extension = format!("{}.{}", CUSTOM_DIRECTORY_EXTENSION, CUSTOM_EXTENSION);
 
     if !encrypt && file_path.file_name()?.to_str()?.ends_with(&dir_lockit_extension) {
-        return decrypt_and_extract_dir_lockit(file_path, password, encrypt_filenames);
+        return decrypt_and_extract_dir_lockit(file_path, password, encrypt_filenames, skip_dod);
     }
 
     match encrypt {
-        true => compress_and_encrypt_file(file_path, password, encrypt_filenames),
-        false => decompress_and_decrypt_file(file_path, password, encrypt_filenames),
+        true => compress_and_encrypt_file(file_path, password, encrypt_filenames, skip_dod),
+        false => decompress_and_decrypt_file(file_path, password, encrypt_filenames, skip_dod),
     }
 }
 
@@ -30,6 +31,7 @@ pub fn process_directory_with_flags(
     encrypt: bool,
     encrypt_filenames: bool,
     dir_mode: bool,
+    skip_dod: bool,
 ) -> Option<()> {
     if dir_mode && encrypt {
         if let Some(encrypted_tar_data) = create_compress_encrypt_tar(directory_path, password) {
@@ -38,17 +40,17 @@ pub fn process_directory_with_flags(
 
             if fs::write(&tar_filename, &encrypted_tar_data).is_err() {
                 eprintln!("Failed to write encrypted tar file {}", tar_filename.display());
-            } else if fs::remove_dir_all(directory_path).is_err() {
-                eprintln!("Failed to remove original directory {}", directory_path.display());
+            } else if secure_delete_directory(directory_path, skip_dod).is_err() {
+                eprintln!("Failed to securely delete original directory {}", directory_path.display());
             }
         }
     } else {
         for entry in fs::read_dir(directory_path).unwrap() {
             let entry_path = entry.unwrap().path();
             if entry_path.is_file() {
-                process_file_with_flags(&entry_path, password, encrypt, encrypt_filenames);
+                process_file_with_flags(&entry_path, password, encrypt, encrypt_filenames, skip_dod);
             } else if entry_path.is_dir() {
-                process_directory_with_flags(&entry_path, password, encrypt, encrypt_filenames, dir_mode)?;
+                process_directory_with_flags(&entry_path, password, encrypt, encrypt_filenames, dir_mode, skip_dod)?;
             }
         }
     }
@@ -75,7 +77,7 @@ fn create_compress_encrypt_tar(directory_path: &Path, password: &str) -> Option<
     }
 }
 
-fn decrypt_and_extract_dir_lockit(file_path: &Path, password: &str, encrypt_filenames: bool) -> Option<PathBuf> {
+fn decrypt_and_extract_dir_lockit(file_path: &Path, password: &str, encrypt_filenames: bool, skip_dod: bool) -> Option<PathBuf> {
     if let Some(decrypted_data) = decompress_and_decrypt_tar(file_path, password) {
         let encrypted_dir_name = file_path.with_extension("").file_stem()?.to_string_lossy().to_string();
         let decrypted_dir_name = if encrypt_filenames {
@@ -88,8 +90,8 @@ fn decrypt_and_extract_dir_lockit(file_path: &Path, password: &str, encrypt_file
         if extract_tar_archive(&decrypted_data, extraction_path).is_err() {
             eprintln!("Failed to extract tar archive");
             return None;
-        } else if fs::remove_file(file_path).is_err() {
-            eprintln!("Failed to remove encrypted tar file {}", file_path.display());
+        } else if secure_delete(file_path, skip_dod).is_err() {
+            eprintln!("Failed to securely delete encrypted tar file {}", file_path.display());
         }
 
         return Some(extraction_path.to_path_buf());
@@ -155,7 +157,7 @@ fn get_new_filename(file_path: &Path, password: &str, encrypt: bool, encrypt_fil
     }
 }
 
-fn compress_and_encrypt_file(file_path: &Path, password: &str, encrypt_filenames: bool) -> Option<PathBuf> {
+fn compress_and_encrypt_file(file_path: &Path, password: &str, encrypt_filenames: bool, skip_dod: bool) -> Option<PathBuf> {
     let file_data = fs::read(file_path).ok()?;
     let compressed_data = super::compression::compress_data(&file_data).ok()?;
     let encrypted_data = super::crypto::encrypt_data(&compressed_data, password).ok()?;
@@ -164,7 +166,7 @@ fn compress_and_encrypt_file(file_path: &Path, password: &str, encrypt_filenames
     let new_file_path = file_path.with_file_name(format!("{}.{}", new_filename, CUSTOM_EXTENSION));
 
     if fs::write(&new_file_path, &encrypted_data).is_ok() {
-        if let Err(e) = secure_delete(file_path) {
+        if let Err(e) = secure_delete(file_path, skip_dod) {
             eprintln!("Error securely deleting file {}: {}", file_path.display(), e);
         }
         Some(new_file_path)
@@ -174,7 +176,7 @@ fn compress_and_encrypt_file(file_path: &Path, password: &str, encrypt_filenames
     }
 }
 
-fn decompress_and_decrypt_file(file_path: &Path, password: &str, encrypt_filenames: bool) -> Option<PathBuf> {
+fn decompress_and_decrypt_file(file_path: &Path, password: &str, encrypt_filenames: bool, skip_dod: bool) -> Option<PathBuf> {
     if file_path.extension()?.to_str()? != CUSTOM_EXTENSION {
         eprintln!("Skipping file with unsupported extension: {}", file_path.display());
         return None;
@@ -188,7 +190,7 @@ fn decompress_and_decrypt_file(file_path: &Path, password: &str, encrypt_filenam
     let output_path = file_path.with_file_name(new_filename);
 
     if fs::write(&output_path, &decompressed_data).is_ok() {
-        if let Err(e) = secure_delete(file_path) {
+        if let Err(e) = secure_delete(file_path, skip_dod) {
             eprintln!("Error securely deleting file {}: {}", file_path.display(), e);
         }
         Some(output_path)
@@ -198,8 +200,13 @@ fn decompress_and_decrypt_file(file_path: &Path, password: &str, encrypt_filenam
     }
 }
 
-pub fn secure_delete(path: &Path) -> io::Result<()> {
+pub fn secure_delete(path: &Path, skip_dod: bool) -> io::Result<()> {
     if path.exists() {
+        if skip_dod {
+            fs::remove_file(path)?;
+            return Ok(());
+        }
+
         let metadata = fs::metadata(&path)?;
         let file_size = metadata.len();
 
@@ -240,18 +247,17 @@ pub fn secure_delete(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub fn secure_delete_directory(directory_path: &Path) -> io::Result<()> {
+pub fn secure_delete_directory(directory_path: &Path, skip_dod: bool) -> io::Result<()> {
     for entry in fs::read_dir(directory_path)? {
         let entry = entry?;
         let path = entry.path();
 
         if path.is_dir() {
-            secure_delete_directory(&path)?;
+            secure_delete_directory(&path, skip_dod)?;
         } else {
-            secure_delete(&path)?;
+            secure_delete(&path, skip_dod)?;
         }
     }
 
     fs::remove_dir(directory_path)
 }
-
