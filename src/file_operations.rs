@@ -1,5 +1,5 @@
-use std::fs;
-use std::io::{self, Cursor};
+use std::fs::{self, OpenOptions};
+use std::io::{self, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use tar::Archive;
 use hex;
@@ -164,7 +164,9 @@ fn compress_and_encrypt_file(file_path: &Path, password: &str, encrypt_filenames
     let new_file_path = file_path.with_file_name(format!("{}.{}", new_filename, CUSTOM_EXTENSION));
 
     if fs::write(&new_file_path, &encrypted_data).is_ok() {
-        fs::remove_file(file_path).ok()?;
+        if let Err(e) = secure_delete(file_path) {
+            eprintln!("Error securely deleting file {}: {}", file_path.display(), e);
+        }
         Some(new_file_path)
     } else {
         eprintln!("Error writing encrypted file {}", new_file_path.display());
@@ -186,10 +188,74 @@ fn decompress_and_decrypt_file(file_path: &Path, password: &str, encrypt_filenam
     let output_path = file_path.with_file_name(new_filename);
 
     if fs::write(&output_path, &decompressed_data).is_ok() {
-        fs::remove_file(file_path).ok()?;
+        if let Err(e) = secure_delete(file_path) {
+            eprintln!("Error securely deleting file {}: {}", file_path.display(), e);
+        }
         Some(output_path)
     } else {
         eprintln!("Error writing decompressed file {}", output_path.display());
         None
     }
+}
+
+pub fn secure_delete(path: &Path) -> io::Result<()> {
+    if path.exists() {
+        let metadata = fs::metadata(&path)?;
+        let file_size = metadata.len();
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .read(true)
+            .open(&path)?;
+
+        fn verify_pass(file: &mut std::fs::File, expected: &[u8]) -> io::Result<bool> {
+            let mut buffer = vec![0u8; expected.len()];
+            file.seek(SeekFrom::Start(0))?;
+            file.read_exact(&mut buffer)?;
+            Ok(buffer == expected)
+        }
+
+        let pass1 = vec![0xFF; file_size as usize];
+        file.write_all(&pass1)?;
+        file.sync_all()?;
+        if !verify_pass(&mut file, &pass1)? {
+            return Err(io::Error::new(io::ErrorKind::Other, "Verification failed at pass 1"));
+        }
+
+        file.seek(SeekFrom::Start(0))?;
+        let pass2 = vec![0x00; file_size as usize];
+        file.write_all(&pass2)?;
+        file.sync_all()?;
+        if !verify_pass(&mut file, &pass2)? {
+            return Err(io::Error::new(io::ErrorKind::Other, "Verification failed at pass 2"));
+        }
+
+        file.seek(SeekFrom::Start(0))?;
+        let random_data: Vec<u8> = (0..file_size).map(|_| rand::random::<u8>()).collect();
+        file.write_all(&random_data)?;
+        file.sync_all()?;
+        if !verify_pass(&mut file, &random_data)? {
+            return Err(io::Error::new(io::ErrorKind::Other, "Verification failed at pass 3"));
+        }
+
+        drop(file);
+        fs::remove_file(path)?;
+    }
+
+    Ok(())
+}
+
+pub fn secure_delete_directory(directory_path: &Path) -> io::Result<()> {
+    for entry in fs::read_dir(directory_path)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            secure_delete_directory(&path)?;
+        } else {
+            secure_delete(&path)?;
+        }
+    }
+
+    fs::remove_dir(directory_path)
 }

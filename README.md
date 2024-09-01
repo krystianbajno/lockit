@@ -10,6 +10,8 @@ Lock it, unlock it.
 ./lockit encrypt <dir>                   # Encrypt all files in a directory
 ./lockit decrypt <dir/file>              # Decrypt a file or directory
 ./lockit encrypt <dir> --dir             # Compress, tar, and encrypt entire directories
+./lockit remove <dir/file>               # Securely delete a file / directory.
+./lockit delete <dir/file>               # Securely delete a file / directory.
 ./lockit --encrypt-filenames             # Encrypt file names
 ./lockit --no-encrypt-filenames          # Keep file names unchanged
 ./lockit --self-destruct                 # Remove Lockit after use
@@ -19,6 +21,8 @@ Lock it, unlock it.
 
 ## Mechanism
 Lockit compresses files using zstd and secures them with AES-256-GCM encryption.
+
+Lockit can securely remove files, matching the DoD 5220.22-M standard.
 
 ## Customizing Default Settings
 To change default settings, simply modify `build.rs`.
