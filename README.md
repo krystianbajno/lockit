@@ -27,6 +27,13 @@ If `--pipe` is specified, the program processes the input from stdin and outputs
 echo "Secret message" | ./lockit encrypt --pipe | ./lockit decrypt --pipe
 ```
 
+That way you can use it with netcat
+
+```bash
+nc -lvnp 9999 | ./lockit decrypt --pipe
+echo "This is a very secret message" | ./lockit encrypt --pipe | nc localhost 9999
+```
+
 ## Mechanism
 - Lockit compresses files using zstd and secures them with AES-256-GCM encryption.
 - Lockit provides secure file deletion that follows DoD 5220.22-M standard.
