@@ -228,7 +228,7 @@ pub fn secure_delete(path: &Path) -> io::Result<()> {
         let random_data: Vec<u8> = (0..file_size).map(|_| rand::random::<u8>()).collect();
         file.write_all(&random_data)?;
         file.sync_all()?;
-        
+
         if !verify_pass(&mut file, &random_data)? {
             return Err(io::Error::new(io::ErrorKind::Other, "Verification failed at pass 3"));
         }
@@ -254,3 +254,4 @@ pub fn secure_delete_directory(directory_path: &Path) -> io::Result<()> {
 
     fs::remove_dir(directory_path)
 }
+

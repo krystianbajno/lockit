@@ -1,9 +1,10 @@
-use std::env;
-use std::path::PathBuf;
+use std::{env, io, path::PathBuf};
+use std::io::{Read, Write};
 
 mod crypto;
 mod compression;
 mod file_operations;
+mod pipe;
 
 use file_operations::{secure_delete, secure_delete_directory};
 
@@ -12,7 +13,7 @@ include!(concat!(env!("OUT_DIR"), "/default_settings.rs"));
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let (mode, paths, encrypt_filenames_flag, self_destruct_flag, dir_mode) = parse_mode_paths_and_flags(&args);
+    let (mode, paths, encrypt_filenames_flag, self_destruct_flag, dir_mode, pipe_mode) = parse_mode_paths_and_flags(&args);
 
     let use_custom_password = args.contains(&String::from("-p"));
 
@@ -20,24 +21,36 @@ fn main() {
 
     let encrypt = is_encrypt_mode(&mode);
 
-    let password = get_password(use_custom_password);
-
-    match mode.as_str() {
-        "remove" | "delete" | "rm" | "del" => process_removal(paths),
-        _ => process_paths(paths, &password, encrypt, encrypt_filenames, dir_mode),
+    if pipe_mode {
+        if mode != "encrypt" && mode != "decrypt" {
+            eprintln!("Error: --pipe mode can only be used with 'encrypt' or 'decrypt' modes.");
+            std::process::exit(1);
+        }
     }
 
-    if self_destruct_flag.unwrap_or(SELF_DESTRUCT_DEFAULT) {
-        secure_self_destruct();
+    let password = get_password(use_custom_password);
+
+    if pipe_mode {
+        process_pipe_mode(&password, encrypt);
+    } else {
+        match mode.as_str() {
+            "remove" | "delete" | "rm" | "del" => process_removal(paths),
+            _ => process_paths(paths, &password, encrypt, encrypt_filenames, dir_mode),
+        }
+
+        if self_destruct_flag.unwrap_or(SELF_DESTRUCT_DEFAULT) {
+            secure_self_destruct();
+        }
     }
 }
 
-fn parse_mode_paths_and_flags(args: &[String]) -> (String, Vec<PathBuf>, Option<bool>, Option<bool>, bool) {
+fn parse_mode_paths_and_flags(args: &[String]) -> (String, Vec<PathBuf>, Option<bool>, Option<bool>, bool, bool) {
     let mut mode = DEFAULT_MODE.to_string();
     let mut paths = Vec::new();
     let mut encrypt_filenames_flag = None;
     let mut self_destruct_flag = None;
     let mut dir_mode = false;
+    let mut pipe_mode = false;
 
     for arg in args.iter().skip(1) {
         match arg.as_str() {
@@ -47,16 +60,17 @@ fn parse_mode_paths_and_flags(args: &[String]) -> (String, Vec<PathBuf>, Option<
             "--self-destruct" => self_destruct_flag = Some(true),
             "--no-self-destruct" => self_destruct_flag = Some(false),
             "--dir" => dir_mode = true,
+            "--pipe" => pipe_mode = true,
             _ if !arg.starts_with('-') => paths.push(PathBuf::from(arg)),
             _ => {}
         }
     }
 
-    if paths.is_empty() {
+    if paths.is_empty() && !pipe_mode {
         paths.push(PathBuf::from("."));
     }
 
-    (mode, paths, encrypt_filenames_flag, self_destruct_flag, dir_mode)
+    (mode, paths, encrypt_filenames_flag, self_destruct_flag, dir_mode, pipe_mode)
 }
 
 fn is_encrypt_mode(mode: &str) -> bool {
@@ -79,6 +93,22 @@ fn get_password(use_custom_password: bool) -> String {
         rpassword::prompt_password("Enter the password: ").unwrap()
     } else {
         DEFAULT_PASSPHRASE.to_string()
+    }
+}
+
+fn process_pipe_mode(password: &str, encrypt: bool) {
+    let mut buffer = Vec::new();
+    io::stdin().read_to_end(&mut buffer).expect("Failed to read from stdin");
+
+    let processed_data = if encrypt {
+        pipe::encrypt_data_via_pipe(&buffer, password)
+    } else {
+        pipe::decrypt_data_via_pipe(&buffer, password)
+    };
+
+    match processed_data {
+        Ok(data) => io::stdout().write_all(&data).expect("Failed to write to stdout"),
+        Err(e) => eprintln!("Error processing data: {}", e),
     }
 }
 
