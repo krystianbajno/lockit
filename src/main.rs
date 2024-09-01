@@ -22,10 +22,9 @@ fn main() {
 
     let password = get_password(use_custom_password);
 
-    if mode == "remove" || mode == "delete" {
-        process_removal(paths);
-    } else {
-        process_paths(paths, &password, encrypt, encrypt_filenames, dir_mode);
+    match mode.as_str() {
+        "remove" | "delete" | "rm" | "del" => process_removal(paths),
+        _ => process_paths(paths, &password, encrypt, encrypt_filenames, dir_mode),
     }
 
     if self_destruct_flag.unwrap_or(SELF_DESTRUCT_DEFAULT) {
@@ -42,7 +41,7 @@ fn parse_mode_paths_and_flags(args: &[String]) -> (String, Vec<PathBuf>, Option<
 
     for arg in args.iter().skip(1) {
         match arg.as_str() {
-            "encrypt" | "decrypt" | "remove" | "delete" => mode = arg.clone(),
+            "encrypt" | "decrypt" | "remove" | "delete" | "rm" | "del" => mode = arg.clone(),
             "--encrypt-filenames" => encrypt_filenames_flag = Some(true),
             "--no-encrypt-filenames" => encrypt_filenames_flag = Some(false),
             "--self-destruct" => self_destruct_flag = Some(true),
@@ -66,8 +65,10 @@ fn is_encrypt_mode(mode: &str) -> bool {
         "decrypt" => false,
         "delete" => false,
         "remove" => false,
+        "rm" => false,
+        "del" => false,
         _ => {
-            debug_print!("Invalid mode: {}. Defaulting to '{}'.", mode, DEFAULT_MODE);
+            println!("Invalid mode: {}. Defaulting to '{}'.", mode, DEFAULT_MODE);
             DEFAULT_MODE == "encrypt"
         }
     }
