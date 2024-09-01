@@ -27,7 +27,12 @@ If `--pipe` is specified, the program processes the input from stdin and outputs
 echo "Secret message" | ./lockit encrypt --pipe | ./lockit decrypt --pipe
 ```
 
-That way you can use it with netcat or other tools. 
+That way you can encrypt files through IO:
+```
+cat plaintext.txt | ./lockit encrypt --pipe > encrypted.enc
+```
+
+Or use it with netcat or other tools. 
 ```bash
 nc -lvnp 9999 | ./lockit decrypt --pipe
 echo "This is a very secret message" | ./lockit encrypt --pipe | nc localhost 9999
