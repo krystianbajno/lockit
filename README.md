@@ -39,7 +39,7 @@ echo "This is a very secret message" | ./lockit encrypt --pipe | nc localhost 99
 - Lockit provides secure file deletion that follows DoD 5220.22-M standard.
 
 ## But I have SSD
-Yes, although DoD 5220.22-M short wipe is good enough for most cases, due to SSD wear leveling, you won't be able to remove the data fully using software. The best way to handle this is combination of hardware TRIM erase and cryptographic erasure. Encrypt the disk fully and delete the key. Or use a hammer, as it is the most effective method.
+Yes, although DoD 5220.22-M short wipe is good enough for most cases, due to SSD wear leveling, you won't be able to remove the data fully using software. The best way to handle this is combination of hardware TRIM erase and cryptographic erasure. Encrypt the disk fully and delete the key. Or use a hammer, as it is the most effective method for 100% lossy compression.
 
 ## Installation
 ```bash
