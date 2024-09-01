@@ -7,11 +7,12 @@ fn main() {
     
     let default_mode = "encrypt";
 
-    let custom_extension = "lockit";
+    let custom_extension: &str = "lockit";
+    let custom_directory_extension: &str = "dir";
 
     let encrypt_filenames = true; 
 
-    let self_destruct_default = true;
+    let self_destruct_default = false;
 
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = PathBuf::from(out_dir);
@@ -22,9 +23,10 @@ fn main() {
             "pub const DEFAULT_PASSPHRASE: &str = \"{}\";\n\
              pub const DEFAULT_MODE: &str = \"{}\";\n\
              pub const CUSTOM_EXTENSION: &str = \"{}\";\n\
+             pub const CUSTOM_DIRECTORY_EXTENSION: &str = \"{}\";\n\
              pub const ENCRYPT_FILENAMES: bool = {};\n\
              pub const SELF_DESTRUCT_DEFAULT: bool = {};",
-            default_passphrase, default_mode, custom_extension, encrypt_filenames, self_destruct_default
+            default_passphrase, default_mode, custom_extension, custom_directory_extension, encrypt_filenames, self_destruct_default
         ),
     )
     .unwrap();

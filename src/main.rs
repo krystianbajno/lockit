@@ -12,7 +12,7 @@ include!(concat!(env!("OUT_DIR"), "/default_settings.rs"));
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let (mode, paths, encrypt_filenames_flag, self_destruct_flag) = parse_mode_paths_and_flags(&args);
+    let (mode, paths, encrypt_filenames_flag, self_destruct_flag, dir_mode) = parse_mode_paths_and_flags(&args);
 
     let use_custom_password = args.contains(&String::from("-p"));
 
@@ -22,32 +22,30 @@ fn main() {
 
     let password = get_password(use_custom_password);
 
-    process_paths(paths, &password, encrypt, encrypt_filenames);
+    process_paths(paths, &password, encrypt, encrypt_filenames, dir_mode);
 
     if self_destruct_flag.unwrap_or(SELF_DESTRUCT_DEFAULT) {
         secure_self_destruct();
     }
 }
 
-fn parse_mode_paths_and_flags(args: &[String]) -> (String, Vec<PathBuf>, Option<bool>, Option<bool>) {
+fn parse_mode_paths_and_flags(args: &[String]) -> (String, Vec<PathBuf>, Option<bool>, Option<bool>, bool) {
     let mut mode = DEFAULT_MODE.to_string();
     let mut paths = Vec::new();
     let mut encrypt_filenames_flag = None;
     let mut self_destruct_flag = None;
+    let mut dir_mode = false;
 
     for arg in args.iter().skip(1) {
-        if arg == "encrypt" || arg == "decrypt" {
-            mode = arg.clone();
-        } else if arg == "--encrypt-filenames" {
-            encrypt_filenames_flag = Some(true);
-        } else if arg == "--no-encrypt-filenames" {
-            encrypt_filenames_flag = Some(false);
-        } else if arg == "--self-destruct" {
-            self_destruct_flag = Some(true);
-        } else if arg == "--no-self-destruct" {
-            self_destruct_flag = Some(false);
-        } else if !arg.starts_with("-") {
-            paths.push(PathBuf::from(arg));
+        match arg.as_str() {
+            "encrypt" | "decrypt" => mode = arg.clone(),
+            "--encrypt-filenames" => encrypt_filenames_flag = Some(true),
+            "--no-encrypt-filenames" => encrypt_filenames_flag = Some(false),
+            "--self-destruct" => self_destruct_flag = Some(true),
+            "--no-self-destruct" => self_destruct_flag = Some(false),
+            "--dir" => dir_mode = true,
+            _ if !arg.starts_with('-') => paths.push(PathBuf::from(arg)),
+            _ => {}
         }
     }
 
@@ -55,7 +53,7 @@ fn parse_mode_paths_and_flags(args: &[String]) -> (String, Vec<PathBuf>, Option<
         paths.push(PathBuf::from("."));
     }
 
-    (mode, paths, encrypt_filenames_flag, self_destruct_flag)
+    (mode, paths, encrypt_filenames_flag, self_destruct_flag, dir_mode)
 }
 
 fn is_encrypt_mode(mode: &str) -> bool {
@@ -77,7 +75,7 @@ fn get_password(use_custom_password: bool) -> String {
     }
 }
 
-fn process_paths(paths: Vec<PathBuf>, password: &str, encrypt: bool, encrypt_filenames: bool) {
+fn process_paths(paths: Vec<PathBuf>, password: &str, encrypt: bool, encrypt_filenames: bool, dir_mode: bool) {
     for path in paths {
         if !path.exists() {
             debug_print!("Invalid path: {}", path.display());
@@ -87,7 +85,7 @@ fn process_paths(paths: Vec<PathBuf>, password: &str, encrypt: bool, encrypt_fil
         if path.is_file() {
             file_operations::process_file_with_flags(&path, password, encrypt, encrypt_filenames);
         } else if path.is_dir() {
-            file_operations::process_directory_with_flags(&path, password, encrypt, encrypt_filenames);
+            file_operations::process_directory_with_flags(&path, password, encrypt, encrypt_filenames, dir_mode);
         } else {
             debug_print!("Invalid path type: {}", path.display());
         }

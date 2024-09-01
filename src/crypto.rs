@@ -3,9 +3,7 @@ use aes_gcm::{Aes256Gcm, Key, Nonce};
 use hkdf::Hkdf;
 use rand::RngCore;
 use sha2::Sha256;
-use std::fs::{self, OpenOptions};
-use std::io::{self, Write};
-use std::path::Path;
+use std::io;
 
 const KEY_SIZE: usize = 32;
 const NONCE_SIZE: usize = 12;
