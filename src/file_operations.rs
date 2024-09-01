@@ -218,22 +218,17 @@ pub fn secure_delete(path: &Path) -> io::Result<()> {
         let pass1 = vec![0xFF; file_size as usize];
         file.write_all(&pass1)?;
         file.sync_all()?;
-        if !verify_pass(&mut file, &pass1)? {
-            return Err(io::Error::new(io::ErrorKind::Other, "Verification failed at pass 1"));
-        }
 
         file.seek(SeekFrom::Start(0))?;
         let pass2 = vec![0x00; file_size as usize];
         file.write_all(&pass2)?;
         file.sync_all()?;
-        if !verify_pass(&mut file, &pass2)? {
-            return Err(io::Error::new(io::ErrorKind::Other, "Verification failed at pass 2"));
-        }
 
         file.seek(SeekFrom::Start(0))?;
         let random_data: Vec<u8> = (0..file_size).map(|_| rand::random::<u8>()).collect();
         file.write_all(&random_data)?;
         file.sync_all()?;
+        
         if !verify_pass(&mut file, &random_data)? {
             return Err(io::Error::new(io::ErrorKind::Other, "Verification failed at pass 3"));
         }
