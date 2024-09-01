@@ -16,5 +16,8 @@ Blazing fast file encryption suite.
 ./lockit --no-self-destruct # do not remove lockit after use
 ```
 
+## Mechanism
+Files are zstd compressed and aes256gcm encrypted.
+
 ## Change default settings
 Modify `build.rs`
