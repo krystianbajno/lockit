@@ -99,20 +99,52 @@ fn get_password(use_custom_password: bool) -> String {
 }
 
 fn process_pipe_mode(password: &str, encrypt: bool) {
-    let mut buffer = Vec::new();
-    io::stdin().read_to_end(&mut buffer).expect("Failed to read from stdin");
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let mut stdout_lock = stdout.lock();
+    let mut stdin_lock = stdin.lock();
 
-    let processed_data = if encrypt {
-        pipe::encrypt_data_via_pipe(&buffer, password)
-    } else {
-        pipe::decrypt_data_via_pipe(&buffer, password)
-    };
+    // Use a buffer to store the read data
+    let mut buffer = [0u8; 1024]; // Buffer size of 1024 bytes
 
-    match processed_data {
-        Ok(data) => io::stdout().write_all(&data).expect("Failed to write to stdout"),
-        Err(e) => eprintln!("Error processing data: {}", e),
+    loop {
+        // Read from stdin into the buffer
+        let bytes_read = match stdin_lock.read(&mut buffer) {
+            Ok(0) => break, // EOF reached
+            Ok(n) => n,     // Number of bytes read
+            Err(e) => {
+                eprintln!("Failed to read from stdin: {}", e);
+                break;
+            }
+        };
+
+        // Encrypt or decrypt the input data
+        let processed_data = if encrypt {
+            pipe::encrypt_data_via_pipe(&buffer[..bytes_read], password)
+        } else {
+            pipe::decrypt_data_via_pipe(&buffer[..bytes_read], password)
+        };
+
+        match processed_data {
+            Ok(data) => {
+                // Write the processed data to stdout
+                if stdout_lock.write_all(&data).is_err() {
+                    eprintln!("Failed to write to stdout");
+                    break;
+                }
+                if stdout_lock.flush().is_err() {
+                    eprintln!("Failed to flush stdout");
+                    break;
+                }
+            }
+            Err(e) => {
+                eprintln!("Error processing data: {}", e);
+                break;
+            }
+        }
     }
 }
+
 
 fn process_paths(paths: Vec<PathBuf>, password: &str, encrypt: bool, encrypt_filenames: bool, dir_mode: bool, skip_dod: bool) {
     for path in paths {

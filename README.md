@@ -27,11 +27,13 @@ If `--pipe` is specified, the program processes the input from stdin and outputs
 echo "Secret message" | ./lockit encrypt --pipe | ./lockit decrypt --pipe
 ```
 
-That way you can use it with netcat
-
+That way you can use it with netcat or other tools. You can wrap your reverse shell around it and you'll have it encrypted.
 ```bash
 nc -lvnp 9999 | ./lockit decrypt --pipe
 echo "This is a very secret message" | ./lockit encrypt --pipe | nc localhost 9999
+
+nc -lvnp 9999 | ./lockit decrypt --pipe
+./lockit encrypt --pipe | nc localhost 9999
 ```
 
 ## Mechanism
