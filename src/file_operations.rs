@@ -20,10 +20,27 @@ pub fn process_file_with_flags(
     }
 
     match encrypt {
-        true => compress_and_encrypt_file(file_path, password, encrypt_filenames, skip_dod),
-        false => decompress_and_decrypt_file(file_path, password, encrypt_filenames, skip_dod),
+        true => {
+            match compress_and_encrypt_file(file_path, password, encrypt_filenames, skip_dod) {
+                Some(path) => Some(path),
+                None => {
+                    eprintln!("Failed to encrypt file: {}", file_path.display());
+                    None
+                }
+            }
+        }
+        false => {
+            match decompress_and_decrypt_file(file_path, password, encrypt_filenames, skip_dod) {
+                Some(path) => Some(path),
+                None => {
+                    eprintln!("Failed to decrypt file: {}", file_path.display());
+                    None
+                }
+            }
+        }
     }
 }
+
 
 pub fn process_directory_with_flags(
     directory_path: &Path,
@@ -33,20 +50,80 @@ pub fn process_directory_with_flags(
     dir_mode: bool,
     skip_dod: bool,
 ) -> Option<()> {
+    let mut current_path = directory_path.to_path_buf();
+    let dir_lockit_extension = format!("{}.{}", CUSTOM_DIRECTORY_EXTENSION, CUSTOM_EXTENSION);
+
+    if encrypt {
+        if encrypt_filenames {
+            // Encrypt the directory name and add the .lockit extension
+            let encrypted_dir_name = get_new_filename(&current_path, password, true, encrypt_filenames)?;
+            let encrypted_path = current_path.with_file_name(format!("{}.{}", encrypted_dir_name, dir_lockit_extension));
+
+            if let Err(e) = fs::rename(&current_path, &encrypted_path) {
+                eprintln!("Failed to rename directory {}: {}", current_path.display(), e);
+                return None;
+            }
+            current_path = encrypted_path;
+        }
+    } else {
+        // Decrypt the directory if it ends with the .lockit extension
+        if current_path.extension().and_then(|ext| ext.to_str()) == Some(CUSTOM_EXTENSION)
+            && current_path
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .map_or(false, |stem| stem.ends_with(CUSTOM_DIRECTORY_EXTENSION))
+        {
+            // Strip the ".dir.lockit" to get the encrypted directory name
+            let encrypted_dir_name = current_path
+                .file_stem()?
+                .to_str()?
+                .trim_end_matches(&format!(".{}", CUSTOM_DIRECTORY_EXTENSION))
+                .to_string();
+
+            // Decrypt the directory name back to the original
+            let decrypted_dir_name = if encrypt_filenames {
+                decrypt_filename(&encrypted_dir_name, password)?
+            } else {
+                encrypted_dir_name
+            };
+
+            let decrypted_path = current_path.with_file_name(decrypted_dir_name);
+
+            if let Err(e) = fs::rename(&current_path, &decrypted_path) {
+                eprintln!("Failed to rename directory {}: {}", current_path.display(), e);
+                return None;
+            }
+            current_path = decrypted_path;
+        }
+    }
+
     if dir_mode && encrypt {
-        if let Some(encrypted_tar_data) = create_compress_encrypt_tar(directory_path, password) {
-            let new_filename = get_new_filename(directory_path, password, true, encrypt_filenames)?;
-            let tar_filename = directory_path.with_file_name(format!("{}.{}.{}", new_filename, CUSTOM_DIRECTORY_EXTENSION, CUSTOM_EXTENSION));
+        if let Some(encrypted_tar_data) = create_compress_encrypt_tar(&current_path, password) {
+            let new_filename = get_new_filename(&current_path, password, true, encrypt_filenames)?;
+            let tar_filename = current_path.with_file_name(format!("{}.{}.{}", new_filename, CUSTOM_DIRECTORY_EXTENSION, CUSTOM_EXTENSION));
 
             if fs::write(&tar_filename, &encrypted_tar_data).is_err() {
                 eprintln!("Failed to write encrypted tar file {}", tar_filename.display());
-            } else if secure_delete_directory(directory_path, skip_dod).is_err() {
-                eprintln!("Failed to securely delete original directory {}", directory_path.display());
+            } else if secure_delete_directory(&current_path, skip_dod).is_err() {
+                eprintln!("Failed to securely delete original directory {}", current_path.display());
             }
         }
     } else {
-        for entry in fs::read_dir(directory_path).unwrap() {
-            let entry_path = entry.unwrap().path();
+        for entry in match fs::read_dir(&current_path) {
+            Ok(entries) => entries,
+            Err(e) => {
+                eprintln!("Failed to read directory {}: {}", current_path.display(), e);
+                return None;
+            }
+        } {
+            let entry_path = match entry {
+                Ok(entry) => entry.path(),
+                Err(e) => {
+                    eprintln!("Failed to read entry in directory {}: {}", current_path.display(), e);
+                    continue;
+                }
+            };
+
             if entry_path.is_file() {
                 process_file_with_flags(&entry_path, password, encrypt, encrypt_filenames, skip_dod);
             } else if entry_path.is_dir() {

