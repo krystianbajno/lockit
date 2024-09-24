@@ -5,6 +5,9 @@ version = "0.1.0"
 edition = "2021"
 build = "build.rs"
 
+[build-dependencies]
+static_vcruntime = "2.0"
+
 [dependencies]
 aes-gcm = "0.10"
 hkdf = "0.12.4"
