@@ -1,3 +1,6 @@
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/ee2ce70ea1a74d949cdedb0e117043a6)](https://app.codacy.com/gh/krystianbajno/lockit/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![CodeFactor](https://www.codefactor.io/repository/github/krystianbajno/lockit/badge)](https://www.codefactor.io/repository/github/krystianbajno/lockit)
+
 # Lockit
 Lock it, unlock it.
 
